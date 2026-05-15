@@ -1,0 +1,63 @@
+# Build artifacts
+build/
+out/
+*.o
+*.a
+*.so
+*.dylib
+
+# Generated services land here when developing locally
+gen-out/
+generated/
+
+# CMake intermediates
+CMakeCache.txt
+CMakeFiles/
+CTestTestfile.cmake
+cmake_install.cmake
+Testing/
+_deps/
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+.cache/
+compile_commands.json
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+venv/
+.venv/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Local secrets (operator's responsibility, but guard against drift)
+*.pem
+!test-cert.pem
+!test-key.pem
+.env
+.env.local
+
+# Logs
+*.log
+
+# PG dev data
+pgdata/
+
+# Benchmark scratch — competitor toolchains build artefacts that must
+# never enter version control. Keep the source apps + run scripts +
+# results/*.{png,svg} only. The raw wrk *.log files match *.log above.
+benchmarks/build-out/
+benchmarks/competitors/*/target/
+benchmarks/competitors/*/node_modules/
+benchmarks/competitors/*/__pycache__/
+benchmarks/competitors/*/Cargo.lock
+benchmarks/results/*.tsv
+benchmarks/results/*.txt
+benchmarks/results/iso_*

@@ -1,0 +1,11 @@
+{
+  "name": "express-bench",
+  "version": "1.0.0",
+  "description": "Express + pg minimal /products endpoint for benchmarking",
+  "main": "index.js",
+  "private": true,
+  "dependencies": {
+    "express": "^4.19.2",
+    "pg": "^8.11.5"
+  }
+}

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="540" viewBox="0 0 1100 540" font-family="-apple-system,Segoe UI,sans-serif">
+<rect width="1100" height="540" fill="#fafafa"/>
+<text x="550.0" y="34" text-anchor="middle" font-size="22" font-weight="700" fill="#111">Pressure isolation under attack</text>
+<text x="550.0" y="58" text-anchor="middle" font-size="13" fill="#555">Noisy neighbour: 256-conn wrk hammering /analytics for 30s. Meanwhile /payments + /products measured at 32 conn each.</text>
+<text x="550.0" y="78" text-anchor="middle" font-size="13" fill="#555">Same hardware · same PG · 5k payments + 10k products + 10k events seed</text>
+<text x="20" y="122" font-size="14" font-weight="700" fill="#111">SpidoNG (priority + token bucket)</text>
+<text x="276" y="154.0" text-anchor="end" font-size="13" fill="#222" font-family="ui-monospace,monospace">/payments  (critical)</text>
+<rect x="290" y="130" width="86.5" height="38" rx="5" fill="#0ea5e9" />
+<text x="384.50538056711963" y="154.0" font-size="15" font-weight="700" fill="#222">22,026 req/s</text>
+<text x="854" y="154.0" font-size="12" fill="#555">p50 1.21 ms · p99 5.77 ms</text>
+<text x="276" y="206.0" text-anchor="end" font-size="13" fill="#222" font-family="ui-monospace,monospace">/products  (normal)</text>
+<rect x="290" y="182" width="71.7" height="38" rx="5" fill="#3b82f6" />
+<text x="369.7029298562564" y="206.0" font-size="15" font-weight="700" fill="#222">18,257 req/s</text>
+<text x="854" y="206.0" font-size="12" fill="#555">p50 1.49 ms · p99 6.18 ms</text>
+<text x="276" y="258.0" text-anchor="end" font-size="13" fill="#222" font-family="ui-monospace,monospace">/analytics (best_effort, attacked)</text>
+<rect x="290" y="234" width="550.0" height="38" rx="5" fill="#a855f7" />
+<text x="302" y="258.0" font-size="16" font-weight="700" fill="white">140,041 req/s</text>
+<text x="854" y="258.0" font-size="12" fill="#555">p50 1.54 ms · p99 6.44 ms</text>
+<text x="20" y="336" font-size="14" font-weight="700" fill="#111">Actix + tokio-postgres (no admission control)</text>
+<text x="276" y="368.0" text-anchor="end" font-size="13" fill="#222" font-family="ui-monospace,monospace">/payments  (critical)</text>
+<rect x="290" y="344" width="38.1" height="38" rx="5" fill="#0ea5e9" />
+<text x="336.1352603880292" y="368.0" font-size="15" font-weight="700" fill="#222">9,710 req/s</text>
+<text x="854" y="368.0" font-size="12" fill="#555">p50 3.15 ms · p99 5.80 ms</text>
+<text x="276" y="420.0" text-anchor="end" font-size="13" fill="#222" font-family="ui-monospace,monospace">/products  (normal)</text>
+<rect x="290" y="396" width="31.6" height="38" rx="5" fill="#3b82f6" />
+<text x="329.61574110439085" y="420.0" font-size="15" font-weight="700" fill="#222">8,050 req/s</text>
+<text x="854" y="420.0" font-size="12" fill="#555">p50 3.83 ms · p99 6.81 ms</text>
+<text x="276" y="472.0" text-anchor="end" font-size="13" fill="#222" font-family="ui-monospace,monospace">/analytics (attacked)</text>
+<rect x="290" y="448" width="291.9" height="38" rx="5" fill="#a855f7" />
+<text x="302" y="472.0" font-size="16" font-weight="700" fill="white">74,314 req/s</text>
+<text x="854" y="472.0" font-size="12" fill="#555">p50 3.28 ms · p99 6.24 ms</text>
+<text x="550.0" y="508" text-anchor="middle" font-size="12" fill="#666">Under attack SpidoNG keeps /payments at <tspan font-weight="700">22k req/s</tspan>; Actix drops to 9.7k. Token-bucket admission + per-endpoint priority do the work.</text>
+</svg>

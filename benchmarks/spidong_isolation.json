@@ -1,0 +1,43 @@
+{
+  "service":  {"name": "spidong_isolation", "port": 9100},
+  "database": {
+    "socket_path": "/var/run/postgresql/.s.PGSQL.5432",
+    "user": "kaan", "password": "", "dbname": "ecom",
+    "min_conns": 8, "max_conns": 32
+  },
+  "cache": {"enabled": true, "max_bytes": 67108864, "default_ttl_s": 5},
+
+  "resources": [
+    {
+      "path": "/payments",
+      "table": "payments",
+      "primary_key": "id",
+      "columns": ["id", "user_id", "amount", "status"],
+      "methods": ["GET"],
+      "priority": "critical",
+      "overload_behavior": "return_503",
+      "pagination": {"default": 20, "max": 100}
+    },
+    {
+      "path": "/products",
+      "table": "products",
+      "primary_key": "id",
+      "columns": ["id", "name", "description", "price", "stock", "category"],
+      "methods": ["GET"],
+      "priority": "normal",
+      "overload_behavior": "return_503",
+      "pagination": {"default": 20, "max": 100}
+    },
+    {
+      "path": "/analytics",
+      "table": "analytics_events",
+      "primary_key": "id",
+      "columns": ["id", "kind", "payload", "created_at"],
+      "methods": ["GET"],
+      "priority": "best_effort",
+      "overload_behavior": "drop_best_effort",
+      "pagination": {"default": 20, "max": 100}
+    }
+  ],
+  "proxy": []
+}

@@ -1,0 +1,17 @@
+{
+  "service":  {"name": "spidong_bench", "port": 9000},
+  "database": {
+    "socket_path": "/var/run/postgresql/.s.PGSQL.5432",
+    "user": "kaan", "password": "", "dbname": "ecom",
+    "min_conns": 8, "max_conns": 32
+  },
+  "cache":    {"enabled": true, "max_bytes": 134217728, "default_ttl_s": 30},
+  "resources": [{
+    "path": "/products",
+    "table": "products",
+    "primary_key": "id",
+    "columns": ["id", "name", "description", "price", "stock", "category"],
+    "methods": ["GET"],
+    "pagination": {"default": 20, "max": 100}
+  }]
+}

@@ -1,0 +1,72 @@
+{
+  "service": {
+    "name": "myservice",
+    "port": 8080
+  },
+  "database": {
+    "socket_path": "/var/run/postgresql/.s.PGSQL.5432",
+    "user": "admin",
+    "password": "sifre",
+    "dbname": "mydb",
+    "min_conns": 4,
+    "max_conns": 16
+  },
+  "cache": {
+    "enabled": true,
+    "max_bytes": 268435456,
+    "default_ttl_s": 5
+  },
+  "resources": [
+    {
+      "path": "/users",
+      "table": "users",
+      "primary_key": "id",
+      "columns": ["id", "name", "email"],
+      "methods": ["GET", "POST", "PUT", "DELETE"],
+      "data_model": "state",
+      "priority": "high",
+      "read_mode": "cache_first",
+      "write_mode": "sync",
+      "consistency_level": "strict",
+      "cache_ttl_s": 10,
+      "auth": true,
+      "overload_behavior": "return_503"
+    },
+    {
+      "path": "/firmware",
+      "table": "firmware",
+      "primary_key": "id",
+      "columns": ["id", "version", "board", "data"],
+      "methods": ["GET", "POST"],
+      "data_model": "state",
+      "priority": "normal",
+      "read_mode": "cache_first",
+      "write_mode": "batch_durable",
+      "consistency_level": "eventual_durable",
+      "cache_ttl_s": 60,
+      "auth": true,
+      "batch_write": true,
+      "batch_size": 1000,
+      "flush_interval_ms": 20,
+      "overload_behavior": "return_202"
+    },
+    {
+      "path": "/events",
+      "table": "events",
+      "primary_key": "id",
+      "columns": ["id", "kind", "payload"],
+      "methods": ["POST"],
+      "data_model": "event",
+      "priority": "low",
+      "write_mode": "batch_memory",
+      "consistency_level": "eventual_memory",
+      "auth": false,
+      "batch_write": true,
+      "batch_size": 2000,
+      "flush_interval_ms": 50,
+      "allow_drop": true,
+      "overload_behavior": "drop_best_effort"
+    }
+  ],
+  "proxy": []
+}

@@ -1,0 +1,107 @@
+{
+  "service": {"name": "ecom", "port": 9000},
+  "database": {
+    "socket_path": "/var/run/postgresql/.s.PGSQL.5432",
+    "user": "kaan",
+    "password": "",
+    "dbname": "ecom",
+    "min_conns": 8,
+    "max_conns": 32
+  },
+  "cache": {"enabled": true, "max_bytes": 134217728, "default_ttl_s": 30},
+
+  "auth": {
+    "type": "jwt",
+    "secret": "ecom-load-test-secret-please-rotate",
+    "user_claim": "sub",
+    "roles_claim": "roles",
+    "leeway_s": 60,
+    "refresh": {"enabled": true, "access_ttl_s": 900, "refresh_ttl_s": 2592000}
+  },
+
+  "resources": [
+    {
+      "path": "/products",
+      "table": "products",
+      "primary_key": "id",
+      "columns": ["id", "name", "description", "price", "stock", "category", "created_at"],
+      "methods": ["GET", "POST", "PUT", "DELETE"],
+      "filters": {
+        "category": {"column": "category", "op": "eq"},
+        "min_price": {"column": "price", "op": "gte"},
+        "max_price": {"column": "price", "op": "lte"},
+        "search":    {"column": "name", "op": "contains"},
+        "in_stock":  {"column": "stock", "op": "gt"}
+      },
+      "sort": {"allowed": ["price", "created_at", "name"], "default": "-created_at"},
+      "pagination": {"default": 20, "max": 100, "include_total": true},
+      "validations": {
+        "name":     {"type": "text",  "required": true, "min_length": 1, "max_length": 200},
+        "price":    {"type": "float", "required": true, "min": 0},
+        "stock":    {"type": "int",   "min": 0},
+        "category": {"type": "text",  "max_length": 50}
+      },
+      "permissions": {
+        "list":   {"roles": [], "bypass_ownership": []},
+        "create": {"roles": ["admin"]},
+        "update": {"roles": ["admin"]},
+        "delete": {"roles": ["admin"]}
+      },
+      "etag": true,
+      "cache_ttl_s": 60
+    },
+    {
+      "path": "/orders",
+      "table": "orders",
+      "primary_key": "id",
+      "columns": ["id", "user_id", "total", "status", "created_at"],
+      "methods": ["GET", "POST", "PUT"],
+      "filters": {
+        "status":     {"column": "status", "op": "eq"},
+        "min_total":  {"column": "total",  "op": "gte"}
+      },
+      "sort": {"allowed": ["created_at", "total"], "default": "-created_at"},
+      "pagination": {"default": 20, "max": 100, "include_total": true},
+      "validations": {
+        "total":  {"type": "float", "required": true, "min": 0},
+        "status": {"type": "text",  "required": true, "enum": ["pending", "paid", "shipped", "delivered", "cancelled"]}
+      },
+      "ownership": {"column": "user_id"},
+      "permissions": {
+        "list":   {"roles": ["user", "admin"], "bypass_ownership": ["admin"]},
+        "get":    {"roles": ["user", "admin"], "bypass_ownership": ["admin"]},
+        "create": {"roles": ["user", "admin"]},
+        "update": {"roles": ["admin"]}
+      },
+      "idempotency": {"enabled": true},
+      "aggregations": {
+        "count": true,
+        "stats": {"columns": ["total"], "ops": ["count", "sum", "avg", "min", "max"]}
+      }
+    },
+    {
+      "path": "/reviews",
+      "table": "reviews",
+      "primary_key": "id",
+      "columns": ["id", "product_id", "user_id", "rating", "comment", "created_at"],
+      "methods": ["GET", "POST", "DELETE"],
+      "filters": {
+        "product_id": {"column": "product_id", "op": "eq"},
+        "min_rating": {"column": "rating",     "op": "gte"}
+      },
+      "sort": {"allowed": ["created_at", "rating"], "default": "-created_at"},
+      "pagination": {"default": 20, "max": 100},
+      "validations": {
+        "rating":  {"type": "int",  "required": true, "min": 1, "max": 5},
+        "comment": {"type": "text", "max_length": 1000}
+      },
+      "ownership": {"column": "user_id"},
+      "permissions": {
+        "create": {"roles": ["user", "admin"]},
+        "delete": {"roles": ["user", "admin"], "bypass_ownership": ["admin"]}
+      },
+      "bulk": {"enabled": false}
+    }
+  ],
+  "proxy": []
+}
