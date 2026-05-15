@@ -96,9 +96,11 @@ bench_one spidong_nocache 9000 "/products?page_size=20" \
   "$BUILD_OUT/spidong_nocache_bench/build/spidong_nocache_bench"
 
 # ----- competitors ---------------------------------------------------------
-if [[ -x /home/kaan/.local/bin/postgrest ]]; then
+POSTGREST_BIN=$(command -v postgrest 2>/dev/null || true)
+[[ -z "$POSTGREST_BIN" && -x "$HOME/.local/bin/postgrest" ]] && POSTGREST_BIN="$HOME/.local/bin/postgrest"
+if [[ -n "$POSTGREST_BIN" && -x "$POSTGREST_BIN" ]]; then
   bench_one postgrest 9001 "/products?limit=20" \
-    /home/kaan/.local/bin/postgrest "$COMP/postgrest/postgrest.conf"
+    "$POSTGREST_BIN" "$COMP/postgrest/postgrest.conf"
 fi
 
 bench_one fastapi 9002 "/products?page_size=20" \

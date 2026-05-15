@@ -118,7 +118,8 @@ def render():
 
 
 def main():
-    out_dir = Path("/home/kaan/http/SpidoNG/benchmarks/results")
+    out_dir = Path(__file__).resolve().parent / "results"
+    out_dir.mkdir(parents=True, exist_ok=True)
     svg = out_dir / "pressure_isolation.svg"
     png = out_dir / "pressure_isolation.png"
     svg.write_text(render())

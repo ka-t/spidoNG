@@ -2,7 +2,7 @@
   "service": {"name": "ecom", "port": 9000},
   "database": {
     "socket_path": "/var/run/postgresql/.s.PGSQL.5432",
-    "user": "kaan",
+    "user": "appuser",
     "password": "",
     "dbname": "ecom",
     "min_conns": 8,

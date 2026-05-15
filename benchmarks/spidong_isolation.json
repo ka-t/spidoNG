@@ -2,7 +2,7 @@
   "service":  {"name": "spidong_isolation", "port": 9100},
   "database": {
     "socket_path": "/var/run/postgresql/.s.PGSQL.5432",
-    "user": "kaan", "password": "", "dbname": "ecom",
+    "user": "appuser", "password": "", "dbname": "ecom",
     "min_conns": 8, "max_conns": 32
   },
   "cache": {"enabled": true, "max_bytes": 67108864, "default_ttl_s": 5},

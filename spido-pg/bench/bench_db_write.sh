@@ -25,7 +25,7 @@ echo "table     : ${TABLE}"
 echo
 
 if ! command -v wrk >/dev/null 2>&1; then
-    echo "wrk bulunamadı. Kur:"
+    echo "wrk not found. Install with:"
     echo "sudo apt install wrk"
     exit 1
 fi
