@@ -145,10 +145,10 @@ Full reference + cookbook with 6 ready-to-copy scenarios:
 **[docs/CONFIG.md](docs/CONFIG.md)**
 
 Quick map:
-- [Top-level schema](docs/CONFIG.md#top-level-şema) — `service`, `database`, `cache`, `auth`, `files`, `push`
-- [Cookbook](docs/CONFIG.md#cookbook---tipik-senaryolar) — public read API · per-user notes app · admin panel + RBAC · IoT high-write · audit log hooks · idempotent payments
-- [Resource fields](docs/CONFIG.md#resource-alanları) — filters / sort / pagination / relations / ownership / permissions / validations / soft_delete / etag / aggregations / bulk / idempotency / hooks
-- [Validation rules](docs/CONFIG.md#validasyon-kuralları) — what fails fast at config-load time
+- [Top-level schema](docs/CONFIG.md#top-level-schema) — `service`, `database`, `cache`, `auth`, `files`, `push`
+- [Cookbook](docs/CONFIG.md#cookbook---typical-scenarios) — public read API · per-user notes app · admin panel + RBAC · IoT high-write · audit log hooks · idempotent payments
+- [Resource fields](docs/CONFIG.md#resource-fields) — filters / sort / pagination / relations / ownership / permissions / validations / soft_delete / etag / aggregations / bulk / idempotency / hooks
+- [Validation rules](docs/CONFIG.md#validation-rules) — what fails fast at config-load time
 - [Minimum viable config](docs/CONFIG.md#minimum-viable-config) — 5 lines, one endpoint
 
 ## Config example

@@ -1,20 +1,20 @@
 # Config Reference
 
-SpidoNG'de tek bir `config.json` dosyası servisinin **tamamını** tanımlar:
-hangi tabloya hangi yoldan erişilir, kim ne yapabilir, hangi alanlar
-doğrulanır, cache nasıl davranır, hangi endpoint'lere push tetikleyici
-bağlanır. Bu döküman tüm alanları örnekleriyle açıklar.
+A single `config.json` defines the **entire** service: which tables are
+exposed at which paths, who can read/write them, which fields are
+validated, how cache and back-pressure behave, which lifecycle hooks
+fire. This document covers every field with examples.
 
-Hızlı geçit:
-- [Top-level şema](#top-level-şema) — `service`, `database`, `cache`, `auth`, ...
-- [Cookbook](#cookbook---tipik-senaryolar) — "şunu yapmak istiyorum" → "şunu yaz"
-- [Resource alanları](#resource-alanları) — `resources[]` içindeki her şey
-- [Validasyon kuralları](#validasyon-kuralları)
-- [Minimum config](#minimum-viable-config) — en küçük çalışan örnek
+Quick links:
+- [Top-level schema](#top-level-schema) — `service`, `database`, `cache`, `auth`, ...
+- [Cookbook](#cookbook---typical-scenarios) — "I want X" → "write Y"
+- [Resource fields](#resource-fields) — everything inside `resources[]`
+- [Validation rules](#validation-rules) — what gets rejected at config-load time
+- [Minimum viable config](#minimum-viable-config) — smallest working example
 
 ---
 
-## Top-level şema
+## Top-level schema
 
 ```json
 {
@@ -31,43 +31,43 @@ Hızlı geçit:
 
 ### `service`
 
-| Alan | Tip | Default | Açıklama |
+| Field | Type | Default | Description |
 |---|---|---|---|
-| `name` | string | `"service"` | C++ project ismi, binary adı, openapi `info.title` |
+| `name` | string | `"service"` | C++ project name, binary name, openapi `info.title` |
 | `port` | int | `8080` | HTTP listen port |
 
 ### `database`
 
-| Alan | Tip | Default | Açıklama |
+| Field | Type | Default | Description |
 |---|---|---|---|
 | `socket_path` | string | `/var/run/postgresql/.s.PGSQL.5432` | PG Unix socket path |
-| `user` | string | `postgres` | PG kullanıcısı |
-| `password` | string | `""` | PG şifresi (SCRAM/MD5 için) |
-| `dbname` | string | `postgres` | Database adı |
-| `min_conns` | int | `0` (= `nproc`) | Minimum pool boyutu |
-| `max_conns` | int | `0` (= `nproc * 4`) | Maksimum pool boyutu |
+| `user` | string | `postgres` | PG user |
+| `password` | string | `""` | PG password (for SCRAM/MD5) |
+| `dbname` | string | `postgres` | Database name |
+| `min_conns` | int | `0` (= `nproc`) | Minimum pool size |
+| `max_conns` | int | `0` (= `nproc * 4`) | Maximum pool size |
 
 ### `cache`
 
-| Alan | Tip | Default | Açıklama |
+| Field | Type | Default | Description |
 |---|---|---|---|
-| `enabled` | bool | `true` | L1/L2 cache aktif mi |
-| `max_bytes` | int | `268435456` (256 MB) | Toplam cache kapasitesi |
-| `default_ttl_s` | int | `5` | Resource'ta `cache_ttl_s` override yoksa kullanılır |
+| `enabled` | bool | `true` | L1/L2 cache active |
+| `max_bytes` | int | `268435456` (256 MB) | Total cache capacity |
+| `default_ttl_s` | int | `5` | Used when a resource doesn't override `cache_ttl_s` |
 
 ### `auth`
 
-**İki mod var.** Default `"header"` (geriye dönük uyumlu):
+**Two modes are supported.** Default is `"header"` (backwards compatible):
 
-#### Header mode (varsayılan)
+#### Header mode (default)
 ```json
 "auth": {"type": "header"}
 ```
-Reverse proxy (nginx, Cloudflare Access, vs.) `X-User-Id` ve `X-User-Roles`
-header'larını set ediyor varsayar. Generator bu header'ları okur. Sunucu
-JWT doğrulamaz.
+Assumes a reverse proxy (nginx, Cloudflare Access, etc.) is setting
+`X-User-Id` and `X-User-Roles` headers. The generator reads from those.
+The server itself does not verify JWTs.
 
-#### JWT mode (mobil/SPA için önerilen)
+#### JWT mode (recommended for mobile/SPA)
 ```json
 "auth": {
   "type": "jwt",
@@ -76,8 +76,8 @@ JWT doğrulamaz.
   "user_claim": "sub",
   "roles_claim": "roles",
   "leeway_s": 60,
-  "issuer": "myapp.com",          // optional, JWT iss claim eşleşmesi
-  "audience": "mobile",            // optional, aud claim eşleşmesi
+  "issuer": "myapp.com",          // optional, matches JWT iss claim
+  "audience": "mobile",            // optional, matches aud claim
   "refresh": {
     "enabled": true,
     "access_ttl_s": 900,
@@ -91,15 +91,16 @@ JWT doğrulamaz.
 }
 ```
 
-- **`secret`** zorunlu. `${JWT_SECRET}` formatında env var değildir
-  (henüz) — şu an plaintext. Production'da generated main.cpp'yi env
-  okuyacak şekilde değiştir veya bir sonraki sürümü bekle.
-- **`refresh.enabled: true`** olunca generator otomatik olarak:
-  - `/auth/login`, `/auth/refresh`, `/auth/logout` endpoint'leri üretir
-  - `migrations/100_pgcrypto.sql` + `migrations/101_refresh_tokens_*.sql` üretir
-  - Login'de `pgcrypto.crypt()` ile bcrypt password verify
+- **`secret`** is required. Note: in the current version it's embedded
+  in the generated `main.cpp` as plaintext. For production, edit the
+  generated code to read from an environment variable, or wait for the
+  upcoming `${ENV_VAR}` substitution feature.
+- **`refresh.enabled: true`** makes the generator automatically:
+  - emit `/auth/login`, `/auth/refresh`, `/auth/logout` endpoints
+  - emit `migrations/100_pgcrypto.sql` + `migrations/101_refresh_tokens_*.sql`
+  - use `pgcrypto.crypt()` for bcrypt password verification on login
 
-### `files` (S3-uyumlu presigned uploads)
+### `files` (S3-compatible presigned uploads)
 
 ```json
 "files": {
@@ -108,18 +109,18 @@ JWT doğrulamaz.
   "bucket": "myapp-uploads",
   "access_key": "AKIA...",
   "secret_key": "secretEXAMPLE",
-  "endpoint": "",                  // optional, MinIO/R2 için "https://...:9000"
+  "endpoint": "",                  // optional; "https://...:9000" for MinIO/R2
   "url_ttl_s": 900,
   "metadata_table": "files",
   "max_size_mb": 50
 }
 ```
 
-- **`auth.type=jwt` zorunlu** (upload eden kullanıcının kim olduğu JWT'den okunur).
-- AWS S3, Cloudflare R2, MinIO, DO Spaces — hepsi S3-uyumlu, sadece
-  `endpoint` farklı.
-- Generator `POST /files/upload-url` (presigned PUT URL) + `POST /files/:id/confirm`
-  endpoint'leri üretir. Mobil app S3'e doğrudan yükler.
+- **Requires `auth.type=jwt`** (the uploader is identified from the JWT).
+- AWS S3, Cloudflare R2, MinIO, DO Spaces — all S3-compatible. Just
+  change `endpoint`.
+- The generator emits `POST /files/upload-url` (presigned PUT URL) and
+  `POST /files/:id/confirm`. The mobile app uploads directly to S3.
 
 ### `push` (FCM/APNs queue + device registry)
 
@@ -131,24 +132,26 @@ JWT doğrulamaz.
 }
 ```
 
-- **`auth.type=jwt` zorunlu**.
-- Generator `POST /push/register-device` (token + platform kayıt) + DELETE'i üretir.
-- Asıl FCM/APNs dispatch'i sen yapmıyorsun — `push_queue` tablosuna SQL
-  satırı yazıyorsun (hook'larda), harici bir worker (Node/Python/Go)
-  bu tabloyu poll edip dispatch ediyor. Şema dökümante:
+- **Requires `auth.type=jwt`**.
+- The generator emits `POST /push/register-device` (register token +
+  platform) and a DELETE counterpart.
+- The actual FCM/APNs dispatch is **not** done by your server — you
+  write a row to `push_queue` (typically from a hook), and a separate
+  worker (Node/Python/Go) polls the table and sends the push. Schema
+  is documented:
 
 ```sql
 INSERT INTO push_queue (user_id, title, body, payload)
-VALUES ('42', 'Yeni mesaj', 'Birisi yorum yaptı', '{}'::jsonb);
+VALUES ('42', 'New message', 'Someone commented', '{}'::jsonb);
 ```
 
-Bu satırı hook'tan da basabilirsin (aşağıda detay).
+You can run that statement from a hook (see below).
 
 ---
 
-## Cookbook - tipik senaryolar
+## Cookbook - typical scenarios
 
-### 1) Public read API (e-ticaret ürün kataloğu)
+### 1) Public read API (e-commerce catalog)
 
 ```json
 {
@@ -171,10 +174,10 @@ Bu satırı hook'tan da basabilirsin (aşağıda detay).
 }
 ```
 
-Ne yapar: `GET /products?category=clothing&min_price=50&sort=-price&page=2`
-şeklinde queriable, 60s cache'li, ETag'li listeleme. Hiç auth yok.
+What you get: `GET /products?category=clothing&min_price=50&sort=-price&page=2`
+style queryable listing, 60s cache, ETag support. No auth.
 
-### 2) Per-user notes app (mobil)
+### 2) Per-user notes app (mobile)
 
 ```json
 {
@@ -195,12 +198,12 @@ Ne yapar: `GET /products?category=clothing&min_price=50&sort=-price&page=2`
 }
 ```
 
-Ne yapar: Her kullanıcı sadece kendi notlarını görür/yazar.
-`/auth/login` + `/auth/refresh` + `/auth/logout` otomatik. JWT'deki
-`sub` claim'i `user_id` ile eşleşmek zorunda. Title 200 karakterden
-fazlaysa 400 döner.
+What you get: each user sees / writes only their own notes.
+`/auth/login` + `/auth/refresh` + `/auth/logout` are auto-emitted. The
+JWT's `sub` claim must match `user_id`. Titles longer than 200 chars
+return 400.
 
-### 3) Admin paneli + public API (rol bazlı)
+### 3) Admin panel + public API (role-based)
 
 ```json
 {
@@ -223,12 +226,12 @@ fazlaysa 400 döner.
 }
 ```
 
-Davranış:
-- **Admin**: tüm user'ları listeleyebilir, herkesin profilini güncelleyebilir.
-- **User**: sadece kendi profilini GET/PUT yapabilir (`bypass_ownership` yok).
-- Listeleme + kullanıcı silme sadece admin'e açık.
+Behavior:
+- **Admin** can list all users and update any profile.
+- **User** can only GET/PUT their own profile (no `bypass_ownership`).
+- Listing + deleting users is admin-only.
 
-### 4) IoT cihaz telemetrisi (yüksek yazma)
+### 4) IoT device telemetry (high write rate)
 
 ```json
 {
@@ -254,10 +257,10 @@ Davranış:
 }
 ```
 
-Davranış: POST'lar batched (memory-only, hızlı), GET ile sorgu+istatistik
-endpoint'leri (`/telemetry/stats`). Saniyede 10k+ event çekebilir.
+Behavior: POSTs are batched (memory-only, fast), GET supports filtering
+and a `/telemetry/stats` aggregation endpoint. Can sustain 10k+ events/s.
 
-### 5) Audit log otomatik tutma (after_insert hook)
+### 5) Automatic audit log via after_insert hook
 
 ```json
 {
@@ -271,17 +274,18 @@ endpoint'leri (`/telemetry/stats`). Saniyede 10k+ event çekebilir.
     "ownership": {"column": "user_id"},
     "hooks": {
       "after_insert": "INSERT INTO audit (table_name, action, row_id, user_id) VALUES ('orders', 'create', $1, $2)",
-      "after_update": "INSERT INTO push_queue (user_id, title, body) VALUES ($2, 'Sipariş güncellendi', 'Siparişiniz hakkında bilgi')"
+      "after_update": "INSERT INTO push_queue (user_id, title, body) VALUES ($2, 'Order updated', 'See your order status')"
     }
   }]
 }
 ```
 
-Hook'larda `$1` = pk değeri (yeni satırın id'si), `$2` = user_id (JWT'den).
-- `after_insert`: her yeni sipariş audit tablosuna kayıt
-- `after_update`: kullanıcıya push notification queue'sa basılır
+In hook SQL, `$1` = primary key of the new/updated row, `$2` = user_id
+(from JWT).
+- `after_insert`: every new order writes to the audit table
+- `after_update`: pushes a notification to the user via push_queue
 
-### 6) Idempotent POST (mobil 4G güvenliği)
+### 6) Idempotent POST (mobile 4G safety)
 
 ```json
 {
@@ -300,38 +304,39 @@ Hook'larda `$1` = pk değeri (yeni satırın id'si), `$2` = user_id (JWT'den).
 }
 ```
 
-Davranış: Mobil app `Idempotency-Key: <uuid>` header'ı ile POST atar.
-Aynı key tekrar gelirse server **aynı response'u replay** eder, yeni
-satır oluşturmaz. Şebeke kesintilerinde idealdir.
+Behavior: the mobile app sends `Idempotency-Key: <uuid>` with the POST.
+If the same key arrives again, the server **replays the original
+response** instead of creating a duplicate row. Ideal for flaky network
+conditions.
 
 ---
 
-## Resource alanları
+## Resource fields
 
-### Zorunlu alanlar
+### Required fields
 
-| Alan | Tip | Açıklama |
+| Field | Type | Description |
 |---|---|---|
-| `path` | string | URL yolu, örn. `/users`. Generator `path/:id`'yi otomatik üretir. |
-| `table` | string | PG tablo adı |
-| `primary_key` | string | PK kolon adı (default `"id"`) |
-| `columns` | string[] | Tablo kolonları sırayla (INSERT/SELECT projeksiyonu) |
-| `methods` | string[] | `["GET", "POST", "PUT", "DELETE"]` arasından seçim |
+| `path` | string | URL path, e.g. `/users`. The generator auto-creates `/path/:id`. |
+| `table` | string | PG table name |
+| `primary_key` | string | PK column name (default `"id"`) |
+| `columns` | string[] | Table columns in order (INSERT/SELECT projection) |
+| `methods` | string[] | Subset of `["GET", "POST", "PUT", "DELETE"]` |
 
-### Filtreleme — `filters`
+### Filtering — `filters`
 
-Query string'den gelen parametreleri WHERE clause'a çevirir. Generator
-**whitelist** uygular: config'te tanımlı olmayan filter denenince 400.
+Maps query string parameters to WHERE clauses. The generator enforces a
+**whitelist**: a filter param not declared in config returns 400.
 
 ```json
 "filters": {
-  "param_name": {"column": "kolon_adi", "op": "operator"}
+  "param_name": {"column": "column_name", "op": "operator"}
 }
 ```
 
-Desteklenen op'lar:
+Supported ops:
 
-| Op | SQL | Örnek query string |
+| Op | SQL | Example query string |
 |---|---|---|
 | `eq` | `=` | `?status=paid` |
 | `neq` | `<>` | `?status=cancelled` |
@@ -343,10 +348,10 @@ Desteklenen op'lar:
 | `ends_with` | `ILIKE '%v'` | `?suffix=Pro` |
 | `in` | `= ANY()` | `?status=paid,shipped` |
 | `not_in` | `<> ALL()` | `?status=cancelled,refunded` |
-| `is_null` | `IS NULL` | `?archived=1` (değer önemsiz, varlığı yeter) |
+| `is_null` | `IS NULL` | `?archived=1` (value ignored; presence triggers) |
 | `not_null` | `IS NOT NULL` | `?confirmed=1` |
 
-### Sıralama — `sort`
+### Sorting — `sort`
 
 ```json
 "sort": {
@@ -355,36 +360,39 @@ Desteklenen op'lar:
 }
 ```
 
-- `allowed`: query'den `?sort=` ile gelebilecek kolonlar. Whitelist dışı = 400.
-- `default`: `?sort=` yoksa kullanılan ORDER BY. `-` öneki DESC.
+- `allowed`: columns the client may request via `?sort=`. Anything else
+  returns 400.
+- `default`: the ORDER BY used when `?sort=` is absent. Prefix `-` for DESC.
 
-Query örnekleri:
+Query examples:
 - `?sort=name` → ORDER BY name ASC
 - `?sort=-price` → ORDER BY price DESC
 
-### Sayfalama — `pagination`
+### Pagination — `pagination`
 
 **Offset mode (default)**:
 ```json
 "pagination": {"default": 20, "max": 100, "include_total": true}
 ```
 - `?page=2&page_size=20` → `LIMIT 20 OFFSET 20`
-- `include_total: true` → `COUNT(*) OVER ()` ile total + meta yazısı:
+- With `include_total: true` the server emits a `COUNT(*) OVER ()`
+  window and wraps the response:
   ```json
   {"data": [...], "meta": {"total": 1234, "page": 2, "page_size": 20, "has_next": true}}
   ```
 
-**Cursor mode** (büyük tablolar, sonsuz scroll için):
+**Cursor mode** (large tables, infinite scroll):
 ```json
 "pagination": {"mode": "cursor", "default": 20, "max": 100}
 ```
 - `?cursor=<last_pk>&page_size=20` → `WHERE pk > cursor ORDER BY pk ASC LIMIT 20`
-- Response `meta.next_cursor` ile yeni cursor verir.
-- Cursor mode `field_masking` ile uyuşmaz (pk her response'ta gerekli).
+- The response's `meta.next_cursor` is the new cursor.
+- Cursor mode is not compatible with `field_masking` (the pk must be
+  emitted in every response).
 
-### İlişkiler — `relations`
+### Relations — `relations`
 
-PG-tarafı `json_agg` ile tek query'de embed eder:
+Embeds related rows via PG-side `json_agg` in the same query:
 
 ```json
 "relations": {
@@ -397,7 +405,7 @@ PG-tarafı `json_agg` ile tek query'de embed eder:
 }
 ```
 
-Üretilen SQL:
+Generated SQL:
 ```sql
 SELECT users.id, users.name,
        coalesce(json_agg(json_build_object('id', posts.id, 'title', posts.title, ...))
@@ -412,22 +420,25 @@ Response:
 ```
 
 `embed`:
-- `"auto"`: her zaman embed
-- `"on_demand"`: sadece `?include=posts` parametresi geldiğinde embed (henüz tamamlanmadı — şu an `auto` ile aynı davranır)
+- `"auto"`: always embedded
+- `"on_demand"`: only embedded when `?include=posts` is present (not
+  yet fully implemented — currently behaves the same as `auto`)
 
-### Sahiplik — `ownership`
+### Ownership — `ownership`
 
 ```json
 "ownership": {"column": "user_id"}
 ```
 
-- Her SELECT'e otomatik `WHERE user_id = <caller_user_id>` eklenir
-- POST'ta body'deki `user_id` kullanıcıdan değil, **JWT'den** alınır (client değiştiremez)
-- PUT/DELETE'te aynı satır sahibi mi diye kontrol
-- `auth.type=jwt` ise user_id JWT claim'inden
-- `auth.type=header` ise `ownership.header` (default `X-User-Id`) header'ından
+- Every SELECT gets an automatic `WHERE user_id = <caller_user_id>`
+- On POST the `user_id` in the body is **overridden** with the value
+  from the JWT (clients cannot impersonate)
+- On PUT/DELETE the request only succeeds if the row's user_id matches
+- With `auth.type=jwt`, user_id is taken from the JWT claim
+- With `auth.type=header`, it's taken from `ownership.header` (default
+  `X-User-Id`)
 
-### Roller ve izinler — `permissions`
+### Roles and permissions — `permissions`
 
 ```json
 "permissions": {
@@ -438,20 +449,21 @@ Response:
 }
 ```
 
-İki form var:
-- **Kısa form** `["role1", "role2"]` = `{"roles": [...], "bypass_ownership": []}`
-- **Uzun form** explicit bypass listesi ile
+Two forms:
+- **Short form** `["role1", "role2"]` = `{"roles": [...], "bypass_ownership": []}`
+- **Long form** with an explicit bypass list
 
-`bypass_ownership`: bu rollere sahip kullanıcılar `WHERE owner_id = ...`
-filtresini atlar (admin tüm satırları görsün).
+`bypass_ownership`: users with one of these roles skip the
+`WHERE owner_id = ...` filter (e.g. admins seeing all rows).
 
-Op anahtarları: `list`, `get`, `create`, `update`, `delete`, `bulk`,
-`count`, `stats`. Bir op için `permissions` tanımlanmamışsa o op için
-rol gate yok (ama ownership hâlâ uygulanır).
+Op keys: `list`, `get`, `create`, `update`, `delete`, `bulk`, `count`,
+`stats`. Omitting `permissions` for an op means no role gate (but
+ownership still applies if configured).
 
 ### Field validation — `validations`
 
-POST/PUT öncesi gövdeyi doğrular. Hata varsa 400 + `{errors: [...]}`.
+Validates the body before POST/PUT. Failures return 400 with
+`{errors: [...]}`.
 
 ```json
 "validations": {
@@ -463,42 +475,42 @@ POST/PUT öncesi gövdeyi doğrular. Hata varsa 400 + `{errors: [...]}`.
 }
 ```
 
-Tipler: `text`, `int`, `bigint`, `float`, `bool`, `email`, `uuid`.
+Types: `text`, `int`, `bigint`, `float`, `bool`, `email`, `uuid`.
 
-- `required: true` sadece POST'ta zorunlu, PUT'ta partial update.
-- `min/max`: sadece sayısal tipler
-- `min_length/max_length`: sadece string tipler
-- `enum`: sadece string tipler
+- `required: true` is enforced only on POST; PUT treats it as partial update
+- `min/max`: numeric types only
+- `min_length/max_length`: string types only
+- `enum`: string types only
 
-### Yumuşak silme — `soft_delete`
+### Soft delete — `soft_delete`
 
 ```json
 "soft_delete": "deleted_at"
 ```
 
-- Tüm SELECT'lere `AND deleted_at IS NULL` eklenir
-- DELETE → `UPDATE table SET deleted_at = now() WHERE ...` olarak çalışır
-- Mobil sync için (`?since=...` filter + tombstoned rows) ideal
+- Every SELECT gains an automatic `AND deleted_at IS NULL`
+- DELETE becomes `UPDATE table SET deleted_at = now() WHERE ...`
+- Ideal for mobile sync (combine with a `?since=...` filter + tombstone rows)
 
-### Alan seçimi — `field_masking`
+### Field selection — `field_masking`
 
 ```json
 "field_masking": true
 ```
 
-`?fields=id,name` → SELECT projeksiyonu daraltılır. Whitelist config'teki
-columns. Cursor pagination ile birlikte kullanılmaz.
+`?fields=id,name` narrows the SELECT projection. The whitelist is the
+resource's `columns`. Not compatible with cursor pagination.
 
-### Cache başına ayar — `cache_ttl_s` ve `etag`
+### Per-resource cache config — `cache_ttl_s` and `etag`
 
 ```json
 "cache_ttl_s": 60,
 "etag": true
 ```
 
-- `cache_ttl_s`: query_cached TTL süresi (saniye)
-- `etag: true`: response gövdesinin FNV-1a hash'i `ETag` header'ına basılır;
-  client `If-None-Match` ile gönderirse 304 döner.
+- `cache_ttl_s`: TTL for `query_cached` (seconds)
+- `etag: true`: the response body's FNV-1a hash is written into the
+  `ETag` header; clients that send a matching `If-None-Match` get 304.
 
 ### Aggregations — `aggregations`
 
@@ -509,20 +521,20 @@ columns. Cursor pagination ile birlikte kullanılmaz.
 }
 ```
 
-- `count: true` → `GET /<path>/count` endpoint'i (mevcut filtreleri uygular)
-- `stats: {...}` → `GET /<path>/stats` endpoint'i, response:
+- `count: true` → emits `GET /<path>/count` (applies current filters)
+- `stats: {...}` → emits `GET /<path>/stats` with response:
   ```json
   {"price": {"min": 5.0, "max": 999.0, "avg": 124.5, "sum": ..., "count": 1234}}
   ```
 
-### Toplu yazma — `bulk`
+### Bulk writes — `bulk`
 
 ```json
 "bulk": {"enabled": true, "max_size": 1000}
 ```
 
-`POST /<path>/bulk` endpoint'i tek istekte array body kabul eder. All-or-nothing:
-herhangi bir satır validation'dan geçemezse hiçbiri yazılmaz.
+Emits `POST /<path>/bulk` which accepts an array body. All-or-nothing:
+if any row fails validation, none are written.
 
 ### Idempotency — `idempotency`
 
@@ -530,9 +542,9 @@ herhangi bir satır validation'dan geçemezse hiçbiri yazılmaz.
 "idempotency": {"enabled": true, "header": "Idempotency-Key", "table": "idempotency_log"}
 ```
 
-POST'larda. Client `Idempotency-Key: <uuid>` gönderir; aynı key tekrar
-gelirse stored response replay (yeni satır oluşturulmaz). Generator
-`idempotency_log` migration'ını otomatik üretir.
+For POSTs. Clients send `Idempotency-Key: <uuid>`; if the same key
+arrives again, the **stored response is replayed** (no new row). The
+generator auto-emits the `idempotency_log` migration.
 
 ### Lifecycle hooks — `hooks`
 
@@ -548,17 +560,17 @@ gelirse stored response replay (yeni satır oluşturulmaz). Generator
 }
 ```
 
-Hook SQL'inde parametreler:
-- `$1` = primary key değeri (insert öncesi boş)
-- `$2` = user_id (JWT'den veya ownership header'ından)
+Hook SQL parameters:
+- `$1` = primary key value (empty before INSERT)
+- `$2` = user_id (from JWT or ownership header)
 
-Davranış:
-- **before_***: SQL fail olursa request iptal, 500 döner.
-- **after_***: SQL fail olursa log + devam (response zaten gönderildi).
-- **transactional: true** (sadece POST için): BEGIN..COMMIT içinde tüm
-  hook + main op çalışır. Herhangi biri fail → ROLLBACK.
+Behavior:
+- **before_***: SQL failure aborts the request with 500.
+- **after_***: SQL failure is logged but the response was already sent.
+- **transactional: true** (POST only): wraps all hooks + the main op in
+  a single BEGIN..COMMIT. Any failure → ROLLBACK.
 
-### Yazma modu — `write_mode` ve `data_model`
+### Write mode — `write_mode` and `data_model`
 
 ```json
 "data_model": "state" | "event",
@@ -568,53 +580,55 @@ Davranış:
 "flush_interval_ms": 10
 ```
 
-- **`data_model: "state"`**: aynı pk'li yeni write coalesce edilir, UPSERT WHERE version eşliğinde.
-- **`data_model: "event"`**: her satır korunur, plain multi-row INSERT.
-- **`write_mode: "batch_memory"`** (en hızlı): BatchWriter'a kuyruğa atılır, periyodik flush. **Crash'te kayıp** mümkün.
-- **`write_mode: "batch_durable"`**: BatchWriter + WAL. Crash-safe, hafif gecikme.
-- **`write_mode: "sync"`** (default): Her POST tek INSERT, immediate.
+- **`data_model: "state"`**: same-pk writes coalesce; the BatchWriter
+  emits an UPSERT with a `WHERE version <=` guard.
+- **`data_model: "event"`**: every row is preserved (plain multi-row INSERT).
+- **`write_mode: "batch_memory"`** (fastest): rows are enqueued in the
+  BatchWriter and flushed periodically. **Crash-loss possible.**
+- **`write_mode: "batch_durable"`**: BatchWriter + WAL. Crash-safe, mild latency.
+- **`write_mode: "sync"`** (default): each POST is one INSERT, immediate.
 
-### Pressure controller — `priority` ve `overload_behavior`
+### Pressure controller — `priority` and `overload_behavior`
 
 ```json
 "priority": "critical" | "high" | "normal" | "low" | "best_effort",
 "overload_behavior": "return_503" | "return_429" | "return_202" | "drop_best_effort" | ...
 ```
 
-PG yavaşlayınca veya pool dolunca:
-- `critical`: token bucket'a en yüksek priority, neredeyse hiç reject yok
-- `best_effort`: ilk reject edilen
-- `overload_behavior`: reject olunca client ne görür (503/429 vs. async ack)
+When PG slows down or the pool fills:
+- `critical`: gets the highest token-bucket refill rate; almost never rejected
+- `best_effort`: the first to get rejected
+- `overload_behavior`: what the client sees when rejected (503/429 vs. async ack)
 
 ---
 
-## Validasyon kuralları
+## Validation rules
 
-Generator config'i load ederken bazı kontroller yapar; ihlal varsa 400 ile
-çıkar (compile öncesi yakalanır):
+The generator runs several checks at config-load time; violations cause
+an early exit (caught before C++ compilation):
 
-| Kural | Hata mesajı |
+| Rule | Error message |
 |---|---|
-| `path` veya `table` eksik | `resource missing 'path' or 'table'` |
-| `columns` boş | `resource has empty 'columns'` |
-| `filters.<x>.column` columns'ta yok | `filter '<x>' references column ... not in resource columns` |
-| `filters.<x>.op` desteklenmeyen op | `op '<bad>' not in {eq, neq, gt, gte, ...}` |
-| `sort.allowed` kolonları yok | `sort.allowed contains '<x>' which is not in resource columns` |
-| `relations.<r>` eksik alan (table/fk/columns) | `relation '<r>' missing 'table'/'fk'/'columns'` |
-| `ownership.column` yok | `ownership.column required` |
-| `validations.<x>.type` desteklenmiyor | `type 'potato' not in {text, int, bigint, float, ...}` |
-| `validations.<x>.min` text tipinde | `min/max requires a numeric type, got 'text'` |
+| Missing `path` or `table` | `resource missing 'path' or 'table'` |
+| Empty `columns` | `resource has empty 'columns'` |
+| `filters.<x>.column` not in columns | `filter '<x>' references column ... not in resource columns` |
+| `filters.<x>.op` unsupported | `op '<bad>' not in {eq, neq, gt, gte, ...}` |
+| `sort.allowed` references missing columns | `sort.allowed contains '<x>' which is not in resource columns` |
+| `relations.<r>` missing field (table/fk/columns) | `relation '<r>' missing 'table'/'fk'/'columns'` |
+| `ownership.column` missing | `ownership.column required` |
+| `validations.<x>.type` unsupported | `type 'potato' not in {text, int, bigint, float, ...}` |
+| `validations.<x>.min` on a string type | `min/max requires a numeric type, got 'text'` |
 | `cursor` mode + `field_masking` | `cursor is not compatible with field_masking` |
-| `files.enabled` + `auth.type != jwt` | `files.enabled requires auth.type='jwt'` |
-| `push.enabled` + `auth.type != jwt` | `push.enabled requires auth.type='jwt'` |
-| `auth.refresh.enabled` + `auth.type != jwt` | refresh ancak JWT modda anlamlıdır |
-| `hooks.<event>` bilinmiyor | `unknown event, allowed: before_/after_ × insert/update/delete` |
+| `files.enabled` + non-JWT auth | `files.enabled requires auth.type='jwt'` |
+| `push.enabled` + non-JWT auth | `push.enabled requires auth.type='jwt'` |
+| `auth.refresh.enabled` + non-JWT auth | refresh only makes sense in JWT mode |
+| `hooks.<event>` unknown | `unknown event, allowed: before_/after_ × insert/update/delete` |
 
 ---
 
 ## Minimum viable config
 
-Sadece bir endpoint:
+A single endpoint:
 
 ```json
 {
@@ -630,61 +644,64 @@ Sadece bir endpoint:
 }
 ```
 
-Ne çalışır:
-- `GET /items?page=1&page_size=20` (default pagination, hiç filter yok)
+What works:
+- `GET /items?page=1&page_size=20` (default pagination, no filters)
 - `GET /items/:id`
-- `POST /items` body `{"name": "..."}` → INSERT
+- `POST /items` with body `{"name": "..."}` → INSERT
 - `GET /_spido_pg/health` (built-in)
 - `GET /_spido_pg/metrics` (built-in)
 
-5 satır config. Üretilen kod ~400 satır. Bu noktadan başlayıp adım adım
-yukarıdaki bölümlerden özellik ekleyebilirsin.
+Five lines of config, ~400 lines of generated code. From here you can
+add features section by section from the reference above.
 
 ---
 
-## Adım adım config inşa etme
+## Building a config step by step
 
-1. **Tablonu tasarla**: PG'de `CREATE TABLE` (resource başına). Generator
-   schema yaratmıyor — tablolar zaten orada olmalı.
-2. **Minimum config**: yukarıdaki örnekten kopyala, path/table/columns
-   doldur, generate et, çalıştır.
-3. **Filter ekle**: query'den hangi parametreler gelmeli? Her birini
-   `filters` map'ine ekle.
-4. **Sort + pagination**: kullanıcı hangi kolonlara göre sıralayabilir?
-   `sort.allowed` whitelist'i. `pagination.include_total: true` mobil
-   "X'ten Y" ekranı için.
-5. **Auth gerekli mi?** JWT mode'a geç. `secret` belirle.
-6. **Per-user data?** `ownership` ekle. Generator otomatik filtre uygular.
-7. **Roller var mı?** `permissions` ekle. Admin için `bypass_ownership`.
-8. **Validation**: required alanlar, regex'ler, enum'lar.
-9. **Hooks**: audit log, push notification, side effect SQL.
-10. **Performance**: cache_ttl_s, etag, write_mode (yüksek yazma için
-    batch_memory), priority.
+1. **Design the table**: run `CREATE TABLE` in PG yourself (one per
+   resource). The generator does not create schemas — tables must
+   exist before the service starts.
+2. **Start minimal**: copy the example above, fill in path/table/columns,
+   generate, run.
+3. **Add filters**: which query params should be supported? Add each
+   to the `filters` map.
+4. **Add sort + pagination**: which columns can be sorted by?
+   `sort.allowed` is the whitelist. Enable `pagination.include_total`
+   for mobile "X of Y" screens.
+5. **Need auth?** Switch to JWT mode. Set a `secret`.
+6. **Per-user data?** Add `ownership`. The generator auto-applies the filter.
+7. **Roles?** Add `permissions`. Use `bypass_ownership` for admin views.
+8. **Validation**: required fields, regex constraints, enums.
+9. **Hooks**: audit logs, push notifications, side-effect SQL.
+10. **Performance**: tune `cache_ttl_s`, `etag`, `write_mode` (use
+    `batch_memory` for very high write rates), `priority`.
 
-Her adımda regenerate + rebuild + test et. Generator deterministic — aynı
-config aynı kodu üretir.
+Regenerate + rebuild + test after each step. The generator is
+deterministic — the same config produces the same code.
 
 ---
 
-## Mevcut örnekler
+## Built-in examples
 
-Repo'da `examples/` altında çalışan config'ler var:
+The repo includes working configs under `examples/`:
 
-| Dosya | Senaryo |
+| File | Scenario |
 |---|---|
-| `examples/ecommerce/config.json` | Tam e-ticaret: products + orders (idempotency) + reviews, JWT, refresh, aggregations |
-| `examples/myservice.json` | İlk default config — users / firmware / events resource'ları |
+| `examples/ecommerce/config.json` | Full e-commerce: products + orders (idempotency) + reviews, JWT, refresh, aggregations |
+| `examples/myservice.json` | First default config — users / firmware / events resources |
 
-Yeni başlıyorsan **`examples/ecommerce/config.json`**'i baz alıp kendine
-göre kırp en hızlı yol.
+Starting from `examples/ecommerce/config.json` and trimming it to your
+needs is the fastest path.
 
 ---
 
-## Daha derine
+## Going deeper
 
-- **Mimari**: [`docs/PHASES.md`](PHASES.md) — spido-pg'nin iç tasarımı (cache, batch, WAL, entity cache, pressure controller).
-- **Faz 4 roadmap**: SCRAM auth, OpenAPI export, transaction wrapping advanced cases.
-- **Benchmark detay**: README'deki "Performance" bölümü.
+- **Architecture**: [`docs/PHASES.md`](PHASES.md) — internal design of
+  spido-pg (cache, batch writer, WAL, entity cache, pressure controller).
+- **Faz 4 roadmap**: SCRAM auth, OpenAPI export, advanced transaction wrapping.
+- **Benchmark methodology**: the "Performance" section of the README.
 
-İlk config'in çalışmazsa: generator output'taki hata mesajı genelde
-yeterli açıklayıcı. Yine de takılırsan issue aç, repro adımları + config + hata.
+If your first config doesn't generate correctly the error message is
+usually self-explanatory. If you're stuck, open an issue with the
+config + the error.
